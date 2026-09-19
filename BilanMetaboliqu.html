@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bilan métabolique caprin — début de lactation</title>
+<style>
+  :root{
+    --ink:#1b2a24; --muted:#5d6b63; --paper:#f2f4ef; --card:#ffffff;
+    --green:#2d6a4f; --green-d:#1b4332; --line:#dbe0d8;
+    --ok:#2d6a4f; --ok-bg:#e7f0ea;
+    --warn:#b9791a; --warn-bg:#fbf1df;
+    --bad:#b23a3a; --bad-bg:#f7e6e4;
+    --na:#8a958d; --na-bg:#eef1ec;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e7ede8; --muted:#9fb0a6; --paper:#141a17; --card:#1c2521; --line:#2e3b34;
+      --ok:#79c39a; --ok-bg:#1d2e25; --warn:#e0aa5a; --warn-bg:#332a1a;
+      --bad:#e08b86; --bad-bg:#33211f; --na:#8a958d; --na-bg:#232b26; --green:#5fa982;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--paper); color:var(--ink); line-height:1.5;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  .num{font-variant-numeric:tabular-nums}
+
+  header.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1rem;margin-bottom:.3rem}
+  header.top h1{font-size:1.5rem;font-weight:650;letter-spacing:-.01em;margin:0;color:var(--green-d)}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header.top h1{color:var(--green)}}
+  header.top p{margin:0;color:var(--muted);font-size:.92rem}
+  .meta-row{display:flex;flex-wrap:wrap;gap:.6rem;margin:.9rem 0 1.3rem}
+  .meta-row input{flex:1 1 160px;min-width:120px}
+
+  input,select,button{font:inherit;color:inherit}
+  input[type=text],input[type=number],input[type=date],select{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:.5rem .6rem;width:100%;
+  }
+  input:focus,select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+  label.fld{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.25rem}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem;margin-bottom:1.2rem}
+  .card > h2{font-size:.86rem;font-weight:650;margin:0 0 .8rem;letter-spacing:.01em}
+
+  /* Hero verdict */
+  .hero{display:grid;grid-template-columns:auto 1fr;gap:1rem 1.4rem;align-items:center;
+    border-left:5px solid var(--green);}
+  .hero .big{font-size:2.6rem;font-weight:700;line-height:1;letter-spacing:-.02em}
+  .hero .big small{font-size:.9rem;font-weight:500;color:var(--muted);letter-spacing:0}
+  .hero .verdict{font-size:1rem}
+  .hero.empty{grid-template-columns:1fr;border-left-color:var(--line);color:var(--muted)}
+  .stat-strip{display:flex;flex-wrap:wrap;gap:.4rem 1.3rem;margin-top:.2rem;font-size:.9rem;color:var(--muted)}
+  .stat-strip b{color:var(--ink);font-weight:600}
+
+  /* thresholds editor */
+  details.obj summary{cursor:pointer;font-size:.86rem;font-weight:650;list-style:none}
+  details.obj summary::-webkit-details-marker{display:none}
+  details.obj summary::before{content:"▸ ";color:var(--muted)}
+  details.obj[open] summary::before{content:"▾ "}
+  .obj-grid{display:grid;grid-template-columns:1fr;gap:.7rem;margin-top:.9rem}
+  .obj-line{border:1px solid var(--line);border-radius:8px;padding:.7rem .8rem;background:var(--paper)}
+  .obj-line .name{font-weight:600;font-size:.92rem;margin-bottom:.15rem}
+  .obj-line .hint{font-size:.78rem;color:var(--muted);margin-bottom:.5rem}
+  .obj-inputs{display:flex;flex-wrap:wrap;gap:.5rem .9rem;align-items:end}
+  .obj-inputs .mini{flex:1 1 90px;min-width:80px}
+  .obj-inputs .mini input{padding:.35rem .45rem}
+  .obj-inputs .mini label{font-size:.72rem}
+
+  /* table */
+  .tbl-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:720px;font-size:.9rem}
+  th,td{padding:.45rem .5rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:.74rem;font-weight:650;color:var(--muted);white-space:nowrap}
+  th .u{display:block;font-weight:400;font-size:.68rem}
+  td input{padding:.4rem .45rem;min-width:70px}
+  td.id input{min-width:88px}
+  td.stade select{min-width:150px}
+  .cell{display:inline-flex;align-items:center;gap:.3rem}
+  .val{border-radius:6px;padding:.4rem .45rem;min-width:70px}
+  .zone-ok .val{background:var(--ok-bg)}
+  .zone-warn .val{background:var(--warn-bg)}
+  .zone-bad .val{background:var(--bad-bg)}
+  .verdict-cell{font-size:.82rem;min-width:180px}
+  .chip{display:inline-block;padding:.12rem .5rem;border-radius:100px;font-size:.72rem;font-weight:650;white-space:nowrap}
+  .chip.ok{background:var(--ok-bg);color:var(--ok)}
+  .chip.warn{background:var(--warn-bg);color:var(--warn)}
+  .chip.bad{background:var(--bad-bg);color:var(--bad)}
+  .chip.na{background:var(--na-bg);color:var(--na)}
+  .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem .3rem;border-radius:6px}
+  .del:hover{background:var(--bad-bg);color:var(--bad)}
+
+  .btn{background:var(--green);color:#fff;border:none;border-radius:8px;padding:.55rem .9rem;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--green-d)}
+  .btn.ghost{background:transparent;color:var(--green);border:1px solid var(--green)}
+  .btn.ghost:hover{background:var(--ok-bg)}
+  .btn.warnx{background:transparent;color:var(--bad);border:1px solid var(--line)}
+  .btn.warnx:hover{border-color:var(--bad);background:var(--bad-bg)}
+  .actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem}
+
+  .empty-tbl{color:var(--muted);font-size:.9rem;padding:1.2rem 0}
+  .disclaimer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:1rem;margin-top:1.6rem}
+  .disclaimer b{color:var(--ink)}
+
+  @media (min-width:720px){ .obj-grid{grid-template-columns:1fr 1fr} }
+  @media print{
+    body{background:#fff}
+    .no-print{display:none!important}
+    .card{break-inside:avoid;border-color:#ccc}
+    details.obj{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Bilan métabolique — début de lactation</h1>
+    <p>Dépistage cétose &amp; équilibre énergie / minéral. Orientation, pas diagnostic.</p>
+  </header>
+
+  <div class="meta-row no-print">
+    <div><label class="fld" for="m-lot">Lot</label><input type="text" id="m-lot" placeholder="ex. Lot 3 haut"></div>
+    <div><label class="fld" for="m-date">Date du bilan</label><input type="date" id="m-date"></div>
+    <div><label class="fld" for="m-src">Prélèvement</label><input type="text" id="m-src" placeholder="ex. GDS — 6 chèvres"></div>
+  </div>
+
+  <!-- HERO -->
+  <div class="card hero empty" id="hero">
+    <div id="hero-body">Ajoute tes chèvres et leurs résultats ci-dessous : la synthèse du lot s'affiche ici.</div>
+  </div>
+
+  <!-- OBJECTIFS -->
+  <div class="card no-print">
+    <details class="obj" id="objBox">
+      <summary>Objectifs &amp; seuils (repères caprins indicatifs — à caler avec ton GDS)</summary>
+      <div class="obj-grid" id="objGrid"></div>
+      <div class="actions">
+        <button class="btn ghost" id="objReset">Réinitialiser les repères</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card">
+    <h2>Chèvres &amp; résultats</h2>
+    <div class="tbl-scroll">
+      <table id="tbl">
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty-tbl no-print" id="emptyTbl">Aucune chèvre. Clique « Ajouter une chèvre » pour commencer.</div>
+    <div class="actions no-print">
+      <button class="btn" id="addRow">+ Ajouter une chèvre</button>
+      <button class="btn ghost" id="expCsv">Exporter CSV</button>
+      <button class="btn ghost" id="printBtn">Imprimer / PDF</button>
+      <button class="btn warnx" id="clearAll">Tout effacer</button>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <b>À lire.</b> Cet outil compare tes valeurs à des repères caprins indicatifs de début de lactation, il ne pose pas de diagnostic.
+    Les seuils varient selon le laboratoire, l'unité et la méthode : cale-les sur les références de ton GDS (bouton « Objectifs &amp; seuils »).
+    Une valeur « verte » n'exclut rien, une valeur « rouge » n'affirme rien — c'est ton vétérinaire / GDS qui confirme et traite.
+    Ne fais aucun traitement (calcium injectable notamment) sans son avis. Données enregistrées uniquement dans ce navigateur.
+  </div>
+</div>
+
+<script>
+"use strict";
+const LS_KEY="agrilium_bilan_metabo_v1";
+
+/* ---- Paramètres & seuils par défaut (indicatifs, éditables) ---- */
+const DEFAULT_OBJ = {
+  glc:  {label:"Glycémie", unit:"mmol/L", hint:"Basse en cétose (le foie manque de glucose). Sensible au stress de contention → peut monter à la prise de sang.", lo:2.7, hi:4.2, dir:"band"},
+  bohb: {label:"BOHB (β-hydroxybutyrate)", unit:"mmol/L", hint:"Marqueur clé de la cétose. Le plus fiable des corps cétoniques.", warn:0.8, bad:1.4, dir:"upBad"},
+  uree: {label:"Urée sanguine", unit:"mmol/L", hint:"Reflète l'équilibre azote / énergie du rumen. Haute = excès d'azote dégradable pour l'énergie dispo.", lo:3.5, hi:7.0, dir:"band"},
+  ph:   {label:"pH urinaire", unit:"", hint:"Normalement alcalin (~8) en lactation. Bas = ration acidogène / acidose, et facteur de risque calculs urinaires.", bad:7.0, warn:7.8, dir:"downBad"},
+  brix: {label:"Brix urinaire", unit:"%", hint:"Concentration / hydratation de l'urine. Repère à caler avec ton GDS — informatif.", lo:2, hi:10, dir:"info"},
+  ca:   {label:"Calcium sanguin (option)", unit:"mmol/L", hint:"Non demandé par défaut. Bas = hypocalcémie. À ajouter sur le même prélèvement si tu veux fermer cette hypothèse.", lo:2.1, hi:2.9, dir:"band", optional:true}
+};
+const PARAM_ORDER = ["glc","bohb","uree","ph","brix","ca"];
+const STADES = ["Fraîche vêlée (<3 sem)","Début lactation","Pleine lactation","Fin lactation","Tarie / gestante","Témoin (va bien)"];
+
+let state = load() || {meta:{lot:"",date:"",src:""}, obj:clone(DEFAULT_OBJ), showCa:false, goats:[]};
+
+/* ---- utils ---- */
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function num(v){ if(v===""||v===null||v===undefined) return null; const n=+v; return isNaN(n)?null:n; }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function load(){ try{ const s=localStorage.getItem(LS_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
+
+/* ---- classement d'une valeur ---- */
+function zone(key,val){
+  if(val===null) return "na";
+  const o=state.obj[key];
+  switch(o.dir){
+    case "upBad":   return val < o.warn ? "ok" : val < o.bad ? "warn" : "bad";
+    case "downBad": return val >= o.warn ? "ok" : val >= o.bad ? "warn" : "bad";
+    case "band":    return (val>=o.lo && val<=o.hi) ? "ok" : "warn";
+    case "info":    if(o.lo==null||o.hi==null) return "na"; return (val>=o.lo && val<=o.hi)?"ok":"warn";
+    default: return "na";
+  }
+}
+
+/* ---- interprétation par chèvre ---- */
+function verdict(g){
+  const b=num(g.bohb), gl=num(g.glc), ur=num(g.uree), ph=num(g.ph);
+  const zb=zone("bohb",b);
+  let level="na", txt=[];
+
+  if(b===null){ txt.push("BOHB manquant"); }
+  else if(zb==="bad"){ level="bad"; txt.push("Cétose clinique probable → véto"); }
+  else if(zb==="warn"){ level="warn"; txt.push("Cétose subclinique"); }
+  else { level="ok"; txt.push("Bilan énergétique OK"); }
+
+  // glycémie en appui
+  if(gl!==null){
+    if(gl < state.obj.glc.lo){
+      if(zb!=="ok"){ txt.push("glycémie basse (cohérent cétose)"); }
+      else { txt.push("glycémie basse à surveiller"); if(level==="ok")level="warn"; }
+    } else if(gl > state.obj.glc.hi){
+      txt.push("glycémie haute (souvent stress de contention)");
+    }
+  }
+  // urée
+  if(ur!==null){
+    if(ur > state.obj.uree.hi) txt.push("urée haute : excès azoté / énergie relative");
+    else if(ur < state.obj.uree.lo) txt.push("urée basse : apport azoté juste");
+  }
+  // pH urinaire
+  if(ph!==null){
+    const zp=zone("ph",ph);
+    if(zp==="bad"){ txt.push("pH urinaire bas : ration acidogène / acidose"); if(level!=="bad")level="warn"; }
+    else if(zp==="warn"){ txt.push("pH urinaire limite"); }
+  }
+  // calcium option
+  if(state.showCa){
+    const ca=num(g.ca);
+    if(ca!==null && ca < state.obj.ca.lo){ txt.push("calcium bas : hypocalcémie possible → véto"); level="bad"; }
+  }
+  return {level, txt:txt.join(" · ")};
+}
+
+/* ---- rendu HERO ---- */
+function renderHero(){
+  const hero=document.getElementById("hero"), body=document.getElementById("hero-body");
+  const gs=state.goats.filter(g=>num(g.bohb)!==null);
+  if(gs.length===0){
+    hero.className="card hero empty";
+    body.innerHTML="Ajoute tes chèvres et leurs résultats ci-dessous : la synthèse du lot s'affiche ici.";
+    hero.innerHTML=""; hero.appendChild(body); return;
+  }
+  const n=gs.length;
+  const sub=gs.filter(g=>zone("bohb",num(g.bohb))==="warn").length;
+  const clin=gs.filter(g=>zone("bohb",num(g.bohb))==="bad").length;
+  const touched=sub+clin;
+  const pct=Math.round(touched/n*100);
+  const meanB=(gs.reduce((s,g)=>s+num(g.bohb),0)/n);
+  const glcs=state.goats.map(g=>num(g.glc)).filter(v=>v!==null);
+  const meanG=glcs.length?(glcs.reduce((a,b)=>a+b,0)/glcs.length):null;
+
+  let lvl = clin>0 ? "bad" : sub>0 ? "warn" : "ok";
+  let color = lvl==="bad"?"var(--bad)":lvl==="warn"?"var(--warn)":"var(--ok)";
+  let verdictTxt = clin>0
+      ? `${clin} chèvre${clin>1?"s":""} en zone cétose clinique — à voir avec le vétérinaire en priorité.`
+      : sub>0
+        ? `${sub} chèvre${sub>1?"s":""} en cétose subclinique — corrige l'énergie (sans acidose) et recontrôle.`
+        : `Aucun signe de cétose sur les chèvres testées. Le « calme » du lot est cohérent avec le creux normal de début de lactation.`;
+
+  hero.className="card hero";
+  hero.style.borderLeftColor=color;
+  hero.innerHTML=`
+    <div class="big" style="color:${color}">${pct}%<br><small>du lot en cétose (${touched}/${n})</small></div>
+    <div>
+      <div class="verdict">${verdictTxt}</div>
+      <div class="stat-strip num">
+        <span>BOHB moyen : <b>${meanB.toFixed(2)}</b> mmol/L</span>
+        ${meanG!==null?`<span>Glycémie moyenne : <b>${meanG.toFixed(2)}</b> mmol/L</span>`:""}
+        <span>Subclinique : <b>${sub}</b></span>
+        <span>Clinique : <b>${clin}</b></span>
+        <span>Testées : <b>${n}</b></span>
+      </div>
+    </div>`;
+}
+
+/* ---- rendu tableau ---- */
+function activeParams(){ return PARAM_ORDER.filter(k=> k!=="ca" || state.showCa ); }
+
+function renderHead(){
+  const head=document.getElementById("head");
+  let h=`<th>Chèvre</th><th>Stade</th>`;
+  activeParams().forEach(k=>{
+    const o=state.obj[k];
+    h+=`<th>${o.label.replace(" (option)","")}<span class="u num">${o.unit||"&nbsp;"}</span></th>`;
+  });
+  h+=`<th>Interprétation</th><th class="no-print"></th>`;
+  head.innerHTML=h;
+}
+
+function renderRows(){
+  const tb=document.getElementById("rows");
+  tb.innerHTML="";
+  document.getElementById("emptyTbl").style.display = state.goats.length? "none":"block";
+  state.goats.forEach((g,i)=>{
+    const tr=document.createElement("tr");
+    let html=`<td class="id"><input type="text" data-i="${i}" data-f="id" value="${esc(g.id)}" placeholder="n°"></td>`;
+    html+=`<td class="stade"><select data-i="${i}" data-f="stade">`+
+          STADES.map(s=>`<option ${g.stade===s?"selected":""}>${s}</option>`).join("")+
+          `</select></td>`;
+    activeParams().forEach(k=>{
+      const z=zone(k,num(g[k]));
+      html+=`<td class="zone-${z}"><input class="val num" type="number" step="0.01" inputmode="decimal" data-i="${i}" data-f="${k}" value="${g[k]??""}"></td>`;
+    });
+    const v=verdict(g);
+    html+=`<td class="verdict-cell"><span class="chip ${v.level}">${v.level==="ok"?"OK":v.level==="warn"?"Surveiller":v.level==="bad"?"Alerte":"—"}</span> ${v.txt}</td>`;
+    html+=`<td class="no-print"><button class="del" data-del="${i}" title="Supprimer">✕</button></td>`;
+    tr.innerHTML=html;
+    tb.appendChild(tr);
+  });
+}
+function esc(s){return (s??"").toString().replace(/"/g,"&quot;");}
+
+/* ---- rendu objectifs ---- */
+function renderObj(){
+  const grid=document.getElementById("objGrid");
+  grid.innerHTML="";
+  PARAM_ORDER.forEach(k=>{
+    const o=state.obj[k];
+    let fields="";
+    const mk=(f,lbl)=> o[f]!==undefined && o[f]!==null || ["lo","hi","warn","bad"].includes(f)
+        ? `<div class="mini"><label class="fld">${lbl}</label><input type="number" step="0.01" data-obj="${k}" data-k="${f}" value="${o[f]??""}"></div>` : "";
+    if(o.dir==="upBad"){ fields=mk("warn","seuil orange ≥")+mk("bad","seuil rouge ≥"); }
+    else if(o.dir==="downBad"){ fields=mk("warn","vert si ≥")+mk("bad","rouge si <"); }
+    else { fields=mk("lo","min vert")+mk("hi","max vert"); }
+    const unitField=`<div class="mini"><label class="fld">unité</label><input type="text" data-obj="${k}" data-k="unit" value="${esc(o.unit)}"></div>`;
+    let extra="";
+    if(k==="ca"){
+      extra=`<div class="mini" style="flex:1 1 100%"><label class="fld"><input type="checkbox" id="caToggle" ${state.showCa?"checked":""}> Afficher la colonne calcium</label></div>`;
+    }
+    grid.insertAdjacentHTML("beforeend",
+      `<div class="obj-line">
+        <div class="name">${o.label}</div>
+        <div class="hint">${o.hint}</div>
+        <div class="obj-inputs">${fields}${unitField}${extra}</div>
+      </div>`);
+  });
+  const t=document.getElementById("caToggle");
+  if(t) t.addEventListener("change",e=>{ state.showCa=e.target.checked; save(); renderAll(); document.getElementById("objBox").open=true; });
+}
+
+/* ---- rendu global ---- */
+function renderAll(){ renderHead(); renderRows(); renderObj(); renderHero(); }
+
+/* ---- events ---- */
+document.getElementById("addRow").addEventListener("click",()=>{
+  state.goats.push({id:"",stade:STADES[0],glc:"",bohb:"",uree:"",ph:"",brix:"",ca:""});
+  save(); renderAll();
+});
+document.getElementById("rows").addEventListener("input",e=>{
+  const t=e.target, i=t.dataset.i, f=t.dataset.f;
+  if(i===undefined) return;
+  const g=state.goats[+i];
+  g[f]=t.value;
+  save();
+  // Mise à jour CIBLÉE, sans reconstruire les champs (sinon perte du focus en cours de frappe) :
+  const tr=t.closest("tr");
+  if(PARAM_ORDER.includes(f)){                 // recolore uniquement la case modifiée
+    t.closest("td").className="zone-"+zone(f,num(t.value));
+  }
+  const v=verdict(g);                          // met à jour la case interprétation de la ligne
+  const vc=tr.querySelector(".verdict-cell");
+  if(vc) vc.innerHTML=`<span class="chip ${v.level}">${v.level==="ok"?"OK":v.level==="warn"?"Surveiller":v.level==="bad"?"Alerte":"—"}</span> ${v.txt}`;
+  renderHero();
+});
+document.getElementById("rows").addEventListener("click",e=>{
+  const d=e.target.dataset.del;
+  if(d!==undefined){ state.goats.splice(+d,1); save(); renderAll(); }
+});
+document.getElementById("objGrid").addEventListener("input",e=>{
+  const k=e.target.dataset.obj, f=e.target.dataset.k;
+  if(!k) return;
+  state.obj[k][f] = (f==="unit") ? e.target.value : num(e.target.value);
+  save(); renderHead(); renderRows(); renderHero();
+});
+document.getElementById("objReset").addEventListener("click",()=>{
+  if(confirm("Rétablir les repères caprins indicatifs par défaut ?")){
+    state.obj=clone(DEFAULT_OBJ); save(); renderAll();
+  }
+});
+document.getElementById("clearAll").addEventListener("click",()=>{
+  if(confirm("Effacer toutes les chèvres saisies ? (les seuils sont conservés)")){
+    state.goats=[]; save(); renderAll();
+  }
+});
+["m-lot","m-date","m-src"].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener("input",()=>{ state.meta[id.slice(2)]=el.value; save(); });
+});
+document.getElementById("printBtn").addEventListener("click",()=>window.print());
+document.getElementById("expCsv").addEventListener("click",exportCsv);
+
+function exportCsv(){
+  const cols=activeParams();
+  const head=["Chevre","Stade",...cols.map(k=>state.obj[k].label+(state.obj[k].unit?` (${state.obj[k].unit})`:"")),"Interpretation"];
+  const lines=[head.join(";")];
+  state.goats.forEach(g=>{
+    const v=verdict(g);
+    const row=[g.id,g.stade,...cols.map(k=>g[k]??""),v.txt.replace(/;/g,",")];
+    lines.push(row.map(x=>`"${(x??"").toString().replace(/"/g,'""')}"`).join(";"));
+  });
+  const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`bilan_metabolique_${(state.meta.lot||"lot").replace(/\s+/g,"_")}_${state.meta.date||""}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ---- init ---- */
+document.getElementById("m-lot").value=state.meta.lot||"";
+document.getElementById("m-date").value=state.meta.date|| new Date().toISOString().slice(0,10);
+state.meta.date=document.getElementById("m-date").value;
+document.getElementById("m-src").value=state.meta.src||"";
+if(state.goats.length===0){ state.goats.push({id:"",stade:STADES[0],glc:"",bohb:"",uree:"",ph:"",brix:"",ca:""}); }
+renderAll(); save();
+</script>
+</body>
+</html>
